@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Padel Americano & Mexicano Turnaj</title>
+    <title>Padel Americano & Mexicano</title>
+    <!-- Favicon / Ikona webu -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎾</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/alpinejs" defer></script>
 </head>
@@ -12,7 +14,7 @@
     <header class="bg-slate-800 border-b border-slate-700 shadow-md sticky top-0 z-50">
         <div class="max-w-5xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
             <h1 class="text-2xl font-black tracking-wider text-emerald-400 flex items-center gap-2">
-                🎾 PADEL AMERICANO / MEXICANO
+                <span class="bg-emerald-500/20 p-2 rounded-xl border border-emerald-500/30 text-xl">🎾</span> PADEL AMERICANO / MEXICANO
             </h1>
             <nav class="flex bg-slate-900 p-1 rounded-xl border border-slate-700 text-sm">
                 <button @click="tab = 'setup'" :class="tab === 'setup' ? 'bg-emerald-600 text-white shadow' : 'text-slate-400 hover:text-white'" class="px-4 py-2 rounded-lg font-medium transition">Nastavení</button>
@@ -212,7 +214,7 @@
         function americanoApp() {
             return {
                 tab: 'setup',
-                format: 'americano', // 'americano' nebo 'mexicano'
+                format: 'americano',
                 players: ['Jan', 'Petr', 'Pavel', 'Tomáš', 'Ondřej', 'Martin', 'Lukáš', 'David'],
                 newPlayerName: '',
                 bulkPlayers: '',
@@ -287,7 +289,6 @@
                 nextRound() {
                     if (this.currentRound < this.rounds.length - 1) {
                         this.currentRound++;
-                        // Pokud je to Mexicano, při přechodu do dalšího kola vygenerujeme zápasy na základě aktuálního pořadí
                         if (this.format === 'mexicano') {
                             this.generateMexicanoRound(this.currentRound);
                         }
@@ -355,7 +356,6 @@
                         }
                         this.rounds = generatedRounds;
                     } else {
-                        // Mexicano - připravíme kostru kol, první kolo se losuje náhodně / podle abecedy
                         let generatedRounds = [];
                         for (let r = 0; r < numRounds; r++) {
                             generatedRounds.push({ matches: [], resting: [] });
@@ -371,12 +371,10 @@
                 },
 
                 generateMexicanoRound(roundIdx) {
-                    // Získáme aktuální pořadí hráčů podle tabulky
                     let currentStandings = this.standings;
                     let sortedPlayers = currentStandings.map(s => s.name);
 
                     let restingPlayers = [];
-                    // Pokud je lichý počet, poslední odpočívá
                     if (sortedPlayers.length % 2 !== 0) {
                         restingPlayers.push(sortedPlayers.pop());
                     }
@@ -390,7 +388,6 @@
                         let p3 = sortedPlayers[c * 4 + 2];
                         let p4 = sortedPlayers[c * 4 + 3];
 
-                        // Kombinace pro Mexicano: 1+4 vs 2+3 (nebo 1+3 vs 2+4)
                         matchesInRound.push({
                             team1: [p1, p4],
                             team2: [p2, p3],
@@ -400,7 +397,6 @@
                         });
                     }
 
-                    // Zbytci hráčů, kteří se na kurty nevešli
                     for (let i = maxMatches * 4; i < sortedPlayers.length; i++) {
                         restingPlayers.push(sortedPlayers[i]);
                     }
