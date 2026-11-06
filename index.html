@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Padel Americano Turnaj</title>
+    <title>Padel Americano & Mexicano Turnaj</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/alpinejs" defer></script>
 </head>
@@ -12,7 +12,7 @@
     <header class="bg-slate-800 border-b border-slate-700 shadow-md sticky top-0 z-50">
         <div class="max-w-5xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
             <h1 class="text-2xl font-black tracking-wider text-emerald-400 flex items-center gap-2">
-                🎾 PADEL AMERICANO
+                🎾 PADEL AMERICANO / MEXICANO
             </h1>
             <nav class="flex bg-slate-900 p-1 rounded-xl border border-slate-700 text-sm">
                 <button @click="tab = 'setup'" :class="tab === 'setup' ? 'bg-emerald-600 text-white shadow' : 'text-slate-400 hover:text-white'" class="px-4 py-2 rounded-lg font-medium transition">Nastavení</button>
@@ -27,6 +27,22 @@
         <!-- 1. SEKCE: NASTAVENÍ -->
         <div x-show="tab === 'setup'" class="space-y-6">
             <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl">
+                <h2 class="text-lg font-bold text-emerald-300 mb-3">Formát turnaje</h2>
+                <div class="grid grid-cols-2 gap-3 mb-6">
+                    <button @click="format = 'americano'" 
+                        :class="format === 'americano' ? 'bg-emerald-600 text-white border-emerald-500 shadow-lg' : 'bg-slate-900 text-slate-300 border-slate-700 hover:bg-slate-700'"
+                        class="p-3.5 rounded-xl border font-bold text-sm transition text-center">
+                        Americano
+                        <span class="block text-[11px] font-normal opacity-80 mt-0.5">Předem daný rozpis</span>
+                    </button>
+                    <button @click="format = 'mexicano'" 
+                        :class="format === 'mexicano' ? 'bg-emerald-600 text-white border-emerald-500 shadow-lg' : 'bg-slate-900 text-slate-300 border-slate-700 hover:bg-slate-700'"
+                        class="p-3.5 rounded-xl border font-bold text-sm transition text-center">
+                        Mexicano
+                        <span class="block text-[11px] font-normal opacity-80 mt-0.5">Losuje se podle skóre</span>
+                    </button>
+                </div>
+
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-lg font-bold text-emerald-300">1. Seznam hráčů</h2>
                     <button @click="clearPlayers" class="text-xs text-rose-400 hover:text-rose-300 font-semibold bg-rose-500/10 px-3 py-1.5 rounded-lg border border-rose-500/20 transition">Smazat všechny hráče</button>
@@ -51,7 +67,7 @@
                         </div>
                     </template>
                 </div>
-                <p class="text-xs text-slate-400 mt-3">Celkem hráčů: <span class="font-bold text-white" x-text="players.length"></span> (pro ideální Americano je nejlepší násobek 4)</p>
+                <p class="text-xs text-slate-400 mt-3">Celkem hráčů: <span class="font-bold text-white" x-text="players.length"></span> (ideálně násobek 4)</p>
             </div>
 
             <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl">
@@ -196,6 +212,7 @@
         function americanoApp() {
             return {
                 tab: 'setup',
+                format: 'americano', // 'americano' nebo 'mexicano'
                 players: ['Jan', 'Petr', 'Pavel', 'Tomáš', 'Ondřej', 'Martin', 'Lukáš', 'David'],
                 newPlayerName: '',
                 bulkPlayers: '',
@@ -209,6 +226,7 @@
                     const saved = localStorage.getItem('padel_americano_state');
                     if (saved) {
                         const data = JSON.parse(saved);
+                        this.format = data.format || 'americano';
                         this.players = data.players || this.players;
                         this.courts = data.courts || 2;
                         this.pointsPerMatch = data.pointsPerMatch || 24;
@@ -219,6 +237,7 @@
 
                 saveState() {
                     localStorage.setItem('padel_americano_state', JSON.stringify({
+                        format: this.format,
                         players: this.players,
                         courts: this.courts,
                         pointsPerMatch: this.pointsPerMatch,
@@ -268,6 +287,10 @@
                 nextRound() {
                     if (this.currentRound < this.rounds.length - 1) {
                         this.currentRound++;
+                        // Pokud je to Mexicano, při přechodu do dalšího kola vygenerujeme zápasy na základě aktuálního pořadí
+                        if (this.format === 'mexicano') {
+                            this.generateMexicanoRound(this.currentRound);
+                        }
                     } else {
                         this.tab = 'table';
                     }
@@ -275,73 +298,117 @@
 
                 generateTournament() {
                     if (this.players.length < 4) {
-                        alert('Pro turnaj Americano je potřeba alespoň 4 hráčů.');
+                        alert('Pro turnaj je potřeba alespoň 4 hráčů.');
                         return;
                     }
 
-                    let p = [...this.players];
-                    let numRounds = p.length % 2 === 0 ? p.length - 1 : p.length;
-                    let generatedRounds = [];
+                    let numRounds = this.players.length % 2 === 0 ? this.players.length - 1 : this.players.length;
+                    
+                    if (this.format === 'americano') {
+                        let p = [...this.players];
+                        let generatedRounds = [];
+                        let workingPlayers = [...p];
+                        if (workingPlayers.length % 2 !== 0) workingPlayers.push(null); 
+                        const n = workingPlayers.length;
 
-                    let workingPlayers = [...p];
-                    if (workingPlayers.length % 2 !== 0) {
-                        workingPlayers.push(null); 
-                    }
+                        for (let r = 0; r < numRounds; r++) {
+                            let roundPairs = [];
+                            let restingPlayers = [];
 
-                    const n = workingPlayers.length;
+                            for (let i = 0; i < n / 2; i++) {
+                                let p1 = workingPlayers[i];
+                                let p2 = workingPlayers[n - 1 - i];
 
-                    for (let r = 0; r < numRounds; r++) {
-                        let roundPairs = [];
-                        let restingPlayers = [];
-
-                        for (let i = 0; i < n / 2; i++) {
-                            let p1 = workingPlayers[i];
-                            let p2 = workingPlayers[n - 1 - i];
-
-                            if (p1 === null) restingPlayers.push(p2);
-                            else if (p2 === null) restingPlayers.push(p1);
-                            else {
-                                roundPairs.push([p1, p2]);
+                                if (p1 === null) restingPlayers.push(p2);
+                                else if (p2 === null) restingPlayers.push(p1);
+                                else roundPairs.push([p1, p2]);
                             }
+
+                            let matchesInRound = [];
+                            let currentMatches = Math.floor(roundPairs.length / 2);
+
+                            for (let c = 0; c < this.courts && c < currentMatches; c++) {
+                                let team1_player1 = roundPairs[c * 2][0];
+                                let team1_player2 = roundPairs[c * 2 + 1][1];
+                                let team2_player1 = roundPairs[c * 2][1];
+                                let team2_player2 = roundPairs[c * 2 + 1][0];
+
+                                matchesInRound.push({
+                                    team1: [team1_player1, team1_player2],
+                                    team2: [team2_player1, team2_player2],
+                                    score1: '',
+                                    score2: '',
+                                    played: false
+                                });
+                            }
+
+                            for (let k = this.courts * 2; k < roundPairs.length; k++) {
+                                restingPlayers.push(roundPairs[k][0], roundPairs[k][1]);
+                            }
+
+                            generatedRounds.push({ matches: matchesInRound, resting: restingPlayers });
+
+                            let fixed = workingPlayers[0];
+                            let rest = workingPlayers.slice(1);
+                            rest.unshift(rest.pop());
+                            workingPlayers = [fixed, ...rest];
                         }
-
-                        let matchesInRound = [];
-                        let currentMatches = Math.floor(roundPairs.length / 2);
-
-                        for (let c = 0; c < this.courts && c < currentMatches; c++) {
-                            let team1_player1 = roundPairs[c * 2][0];
-                            let team1_player2 = roundPairs[c * 2 + 1][1];
-                            let team2_player1 = roundPairs[c * 2][1];
-                            let team2_player2 = roundPairs[c * 2 + 1][0];
-
-                            matchesInRound.push({
-                                team1: [team1_player1, team1_player2],
-                                team2: [team2_player1, team2_player2],
-                                score1: '',
-                                score2: '',
-                                played: false
-                            });
+                        this.rounds = generatedRounds;
+                    } else {
+                        // Mexicano - připravíme kostru kol, první kolo se losuje náhodně / podle abecedy
+                        let generatedRounds = [];
+                        for (let r = 0; r < numRounds; r++) {
+                            generatedRounds.push({ matches: [], resting: [] });
                         }
-
-                        for (let k = this.courts * 2; k < roundPairs.length; k++) {
-                            restingPlayers.push(roundPairs[k][0], roundPairs[k][1]);
-                        }
-
-                        generatedRounds.push({
-                            matches: matchesInRound,
-                            resting: restingPlayers
-                        });
-
-                        let fixed = workingPlayers[0];
-                        let rest = workingPlayers.slice(1);
-                        rest.unshift(rest.pop());
-                        workingPlayers = [fixed, ...rest];
+                        this.rounds = generatedRounds;
+                        this.generateMexicanoRound(0);
                     }
 
-                    this.rounds = generatedRounds;
                     this.isStarted = true;
                     this.currentRound = 0;
                     this.tab = 'matches';
+                    this.saveState();
+                },
+
+                generateMexicanoRound(roundIdx) {
+                    // Získáme aktuální pořadí hráčů podle tabulky
+                    let currentStandings = this.standings;
+                    let sortedPlayers = currentStandings.map(s => s.name);
+
+                    let restingPlayers = [];
+                    // Pokud je lichý počet, poslední odpočívá
+                    if (sortedPlayers.length % 2 !== 0) {
+                        restingPlayers.push(sortedPlayers.pop());
+                    }
+
+                    let matchesInRound = [];
+                    let maxMatches = Math.min(this.courts, Math.floor(sortedPlayers.length / 4));
+
+                    for (let c = 0; c < maxMatches; c++) {
+                        let p1 = sortedPlayers[c * 4];
+                        let p2 = sortedPlayers[c * 4 + 1];
+                        let p3 = sortedPlayers[c * 4 + 2];
+                        let p4 = sortedPlayers[c * 4 + 3];
+
+                        // Kombinace pro Mexicano: 1+4 vs 2+3 (nebo 1+3 vs 2+4)
+                        matchesInRound.push({
+                            team1: [p1, p4],
+                            team2: [p2, p3],
+                            score1: '',
+                            score2: '',
+                            played: false
+                        });
+                    }
+
+                    // Zbytci hráčů, kteří se na kurty nevešli
+                    for (let i = maxMatches * 4; i < sortedPlayers.length; i++) {
+                        restingPlayers.push(sortedPlayers[i]);
+                    }
+
+                    this.rounds[roundIdx] = {
+                        matches: matchesInRound,
+                        resting: restingPlayers
+                    };
                     this.saveState();
                 },
 
@@ -369,6 +436,7 @@
                     });
 
                     this.rounds.forEach(round => {
+                        if (!round || !round.matches) return;
                         round.matches.forEach(match => {
                             if (match.played && match.score1 !== '' && match.score2 !== '') {
                                 let s1 = Number(match.score1) || 0;
