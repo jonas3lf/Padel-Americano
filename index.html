@@ -89,6 +89,7 @@
 
         <!-- 2. SEKCE: ZÁPASY -->
         <div x-show="tab === 'matches'" class="space-y-4">
+            <!-- Horní lišta pro přepínání kol -->
             <div class="flex justify-between items-center bg-slate-800 p-3 rounded-2xl border border-slate-700 gap-2">
                 <button @click="currentRound > 0 ? currentRound-- : null" class="flex-1 bg-slate-700 hover:bg-slate-600 py-2 px-3 rounded-xl text-sm font-bold text-center transition" :disabled="currentRound === 0">◀ Předchozí</button>
                 <span class="font-bold text-emerald-400 px-2 whitespace-nowrap text-sm">Kolo <span x-text="currentRound + 1"></span> / <span x-text="rounds.length"></span></span>
@@ -114,6 +115,7 @@
                 </div>
             </template>
 
+            <!-- Seznam kurtů a zápasů -->
             <template x-if="rounds.length > 0">
                 <div class="space-y-3">
                     <template x-for="(match, mIndex) in rounds[currentRound].matches" :key="mIndex">
@@ -142,6 +144,15 @@
                             </div>
                         </div>
                     </template>
+                </div>
+            </template>
+
+            <!-- Dolní lišta pro přepínání kol (přidána pro pohodlí na konci stránky) -->
+            <template x-if="rounds.length > 0">
+                <div class="flex justify-between items-center bg-slate-800 p-3 rounded-2xl border border-slate-700 gap-2 mt-4">
+                    <button @click="currentRound > 0 ? currentRound-- : null; window.scrollTo({top: 0, behavior: 'smooth'})" class="flex-1 bg-slate-700 hover:bg-slate-600 py-2 px-3 rounded-xl text-sm font-bold text-center transition" :disabled="currentRound === 0">◀ Předchozí</button>
+                    <span class="font-bold text-emerald-400 px-2 whitespace-nowrap text-sm">Kolo <span x-text="currentRound + 1"></span> / <span x-text="rounds.length"></span></span>
+                    <button @click="currentRound < rounds.length - 1 ? currentRound++ : null; window.scrollTo({top: 0, behavior: 'smooth'})" class="flex-1 bg-slate-700 hover:bg-slate-600 py-2 px-3 rounded-xl text-sm font-bold text-center transition" :disabled="currentRound === rounds.length - 1">Další ▶</button>
                 </div>
             </template>
         </div>
