@@ -95,11 +95,22 @@
                 <button @click="currentRound < rounds.length - 1 ? currentRound++ : null" class="flex-1 bg-slate-700 hover:bg-slate-600 py-2 px-3 rounded-xl text-sm font-bold text-center transition" :disabled="currentRound === rounds.length - 1">Další ▶</button>
             </div>
 
-            <!-- Informace o hráčích s volnem v tomto kole -->
-            <template x-if="rounds.length > 0 && rounds[currentRound].resting && rounds[currentRound].resting.length > 0">
-                <div class="bg-amber-500/10 border border-amber-500/20 text-amber-300 px-3 py-2 rounded-xl text-xs flex items-center gap-2">
-                    <span class="font-bold">☕ Volno:</span>
-                    <span x-text="rounds[currentRound].resting.join(', ')"></span>
+            <!-- Informace o hráčích, kteří v tomto kole sedí / nehrají -->
+            <template x-if="rounds.length > 0">
+                <div class="bg-amber-500/10 border border-amber-500/20 text-amber-300 p-3.5 rounded-2xl text-xs flex flex-col gap-1.5 shadow-md">
+                    <div class="flex items-center gap-1.5 font-bold uppercase tracking-wider text-amber-400">
+                        <span>☕ Právě odpočívají (volno):</span>
+                    </div>
+                    <div class="flex flex-wrap gap-1.5">
+                        <template x-if="rounds[currentRound].resting && rounds[currentRound].resting.length > 0">
+                            <template x-for="restPlayer in rounds[currentRound].resting" :key="restPlayer">
+                                <span class="bg-amber-500/20 text-amber-200 px-2.5 py-1 rounded-lg font-semibold text-xs border border-amber-500/30" x-text="restPlayer"></span>
+                            </template>
+                        </template>
+                        <template x-if="!rounds[currentRound].resting || rounds[currentRound].resting.length === 0">
+                            <span class="text-slate-400 italic">V tomto kole hrají všichni hráči bez pauzy.</span>
+                        </template>
+                    </div>
                 </div>
             </template>
 
@@ -118,9 +129,9 @@
 
                                 <!-- Skóre / Výsledek -->
                                 <div class="flex justify-center items-center gap-2 my-1 md:my-0">
-                                    <input type="number" min="0" :max="pointsPerMatch" x-model.number="match.score1" @input="updateScore(currentRound, mIndex, 1)" class="w-14 h-11 bg-slate-900 border border-slate-700 text-center text-lg font-black rounded-xl text-emerald-400 focus:outline-none focus:border-emerald-500">
+                                    <input type="number" min="0" :max="pointsPerMatch" x-model.number="match.score1" @input="updateScore(currentRound, mIndex, 1)" placeholder="-" class="w-14 h-11 bg-slate-900 border border-slate-700 text-center text-lg font-black rounded-xl text-emerald-400 focus:outline-none focus:border-emerald-500">
                                     <span class="text-slate-500 font-bold">:</span>
-                                    <input type="number" min="0" :max="pointsPerMatch" x-model.number="match.score2" @input="updateScore(currentRound, mIndex, 2)" class="w-14 h-11 bg-slate-900 border border-slate-700 text-center text-lg font-black rounded-xl text-emerald-400 focus:outline-none focus:border-emerald-500">
+                                    <input type="number" min="0" :max="pointsPerMatch" x-model.number="match.score2" @input="updateScore(currentRound, mIndex, 2)" placeholder="-" class="w-14 h-11 bg-slate-900 border border-slate-700 text-center text-lg font-black rounded-xl text-emerald-400 focus:outline-none focus:border-emerald-500">
                                 </div>
 
                                 <!-- Tým 2 -->
@@ -285,8 +296,8 @@
                             matchesInRound.push({
                                 team1: [team1_player1, team1_player2],
                                 team2: [team2_player1, team2_player2],
-                                score1: 0,
-                                score2: 0,
+                                score1: '',
+                                score2: '',
                                 played: false
                             });
                         }
@@ -315,16 +326,18 @@
 
                 updateScore(roundIdx, matchIdx, teamNum) {
                     let match = this.rounds[roundIdx].matches[matchIdx];
+                    if (match.score1 === '' && match.score2 === '') return;
+                    
                     if (teamNum === 1) {
                         if (match.score1 > this.pointsPerMatch) match.score1 = this.pointsPerMatch;
                         if (match.score1 < 0) match.score1 = 0;
-                        match.score2 = this.pointsPerMatch - match.score1;
+                        if (match.score1 !== '') match.score2 = this.pointsPerMatch - match.score1;
                     } else {
                         if (match.score2 > this.pointsPerMatch) match.score2 = this.pointsPerMatch;
                         if (match.score2 < 0) match.score2 = 0;
-                        match.score1 = this.pointsPerMatch - match.score2;
+                        if (match.score2 !== '') match.score1 = this.pointsPerMatch - match.score2;
                     }
-                    match.played = true;
+                    match.played = (match.score1 !== '' || match.score2 !== '');
                     this.saveState();
                 },
 
@@ -336,9 +349,9 @@
 
                     this.rounds.forEach(round => {
                         round.matches.forEach(match => {
-                            if (match.played || match.score1 > 0 || match.score2 > 0) {
-                                let s1 = match.score1 || 0;
-                                let s2 = match.score2 || 0;
+                            if (match.played && match.score1 !== '' && match.score2 !== '') {
+                                let s1 = Number(match.score1) || 0;
+                                let s2 = Number(match.score2) || 0;
 
                                 match.team1.forEach(p => {
                                     if (stats[p]) {
