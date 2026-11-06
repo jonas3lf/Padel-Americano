@@ -93,7 +93,7 @@
             <div class="flex justify-between items-center bg-slate-800 p-3 rounded-2xl border border-slate-700 gap-2">
                 <button @click="currentRound > 0 ? currentRound-- : null" class="flex-1 bg-slate-700 hover:bg-slate-600 py-2 px-3 rounded-xl text-sm font-bold text-center transition" :disabled="currentRound === 0">◀ Předchozí</button>
                 <span class="font-bold text-emerald-400 px-2 whitespace-nowrap text-sm">Kolo <span x-text="currentRound + 1"></span> / <span x-text="rounds.length"></span></span>
-                <button @click="currentRound < rounds.length - 1 ? currentRound++ : null" class="flex-1 bg-slate-700 hover:bg-slate-600 py-2 px-3 rounded-xl text-sm font-bold text-center transition" :disabled="currentRound === rounds.length - 1">Další ▶</button>
+                <button @click="nextRound()" class="flex-1 bg-slate-700 hover:bg-slate-600 py-2 px-3 rounded-xl text-sm font-bold text-center transition">Další ▶</button>
             </div>
 
             <!-- Informace o hráčích, kteří v tomto kole sedí / nehrají -->
@@ -147,12 +147,12 @@
                 </div>
             </template>
 
-            <!-- Dolní lišta pro přepínání kol (přidána pro pohodlí na konci stránky) -->
+            <!-- Dolní lišta pro přepínání kol -->
             <template x-if="rounds.length > 0">
                 <div class="flex justify-between items-center bg-slate-800 p-3 rounded-2xl border border-slate-700 gap-2 mt-4">
                     <button @click="currentRound > 0 ? currentRound-- : null; window.scrollTo({top: 0, behavior: 'smooth'})" class="flex-1 bg-slate-700 hover:bg-slate-600 py-2 px-3 rounded-xl text-sm font-bold text-center transition" :disabled="currentRound === 0">◀ Předchozí</button>
                     <span class="font-bold text-emerald-400 px-2 whitespace-nowrap text-sm">Kolo <span x-text="currentRound + 1"></span> / <span x-text="rounds.length"></span></span>
-                    <button @click="currentRound < rounds.length - 1 ? currentRound++ : null; window.scrollTo({top: 0, behavior: 'smooth'})" class="flex-1 bg-slate-700 hover:bg-slate-600 py-2 px-3 rounded-xl text-sm font-bold text-center transition" :disabled="currentRound === rounds.length - 1">Další ▶</button>
+                    <button @click="nextRound(); window.scrollTo({top: 0, behavior: 'smooth'})" class="flex-1 bg-slate-700 hover:bg-slate-600 py-2 px-3 rounded-xl text-sm font-bold text-center transition">Další ▶</button>
                 </div>
             </template>
         </div>
@@ -160,7 +160,7 @@
         <!-- 3. SEKCE: ŽIVÁ TABULKA -->
         <div x-show="tab === 'table'" class="space-y-6">
             <div class="bg-slate-800 border border-slate-700 rounded-2xl shadow-xl overflow-hidden">
-                <div class="p-4 bg-slate-800/80 border-b border-slate-700 font-bold text-emerald-300">Průběžné pořadí hráčů (započteno odehraných kol)</div>
+                <div class="p-4 bg-slate-800/80 border-b border-slate-700 font-bold text-emerald-300">Průběžné pořadí hráčů</div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
                         <thead>
@@ -168,6 +168,7 @@
                                 <th class="p-3.5 text-center w-12">#</th>
                                 <th class="p-3.5">Hráč</th>
                                 <th class="p-3.5 text-center">Zápasy</th>
+                                <th class="p-3.5 text-center text-emerald-400">Výhry</th>
                                 <th class="p-3.5 text-center">Skóre</th>
                                 <th class="p-3.5 text-center font-bold text-emerald-400">Body</th>
                             </tr>
@@ -178,6 +179,7 @@
                                     <td class="p-3.5 text-center font-bold text-slate-400" x-text="index + 1"></td>
                                     <td class="p-3.5 font-semibold text-white" x-text="row.name"></td>
                                     <td class="p-3.5 text-center text-slate-300" x-text="row.matches"></td>
+                                    <td class="p-3.5 text-center font-bold text-emerald-400" x-text="row.wins"></td>
                                     <td class="p-3.5 text-center text-slate-300" x-text="row.scoreFor + ':' + row.scoreAgainst"></td>
                                     <td class="p-3.5 text-center font-black text-emerald-400 text-base" x-text="row.points"></td>
                                 </tr>
@@ -260,6 +262,14 @@
                         this.rounds = [];
                         this.isStarted = false;
                         this.tab = 'setup';
+                    }
+                },
+
+                nextRound() {
+                    if (this.currentRound < this.rounds.length - 1) {
+                        this.currentRound++;
+                    } else {
+                        this.tab = 'table';
                     }
                 },
 
@@ -355,7 +365,7 @@
                 get standings() {
                     let stats = {};
                     this.players.forEach(pl => {
-                        stats[pl] = { name: pl, matches: 0, points: 0, scoreFor: 0, scoreAgainst: 0 };
+                        stats[pl] = { name: pl, matches: 0, wins: 0, points: 0, scoreFor: 0, scoreAgainst: 0 };
                     });
 
                     this.rounds.forEach(round => {
@@ -364,9 +374,13 @@
                                 let s1 = Number(match.score1) || 0;
                                 let s2 = Number(match.score2) || 0;
 
+                                let t1Wins = s1 > s2;
+                                let t2Wins = s2 > s1;
+
                                 match.team1.forEach(p => {
                                     if (stats[p]) {
                                         stats[p].matches++;
+                                        if (t1Wins) stats[p].wins++;
                                         stats[p].points += s1;
                                         stats[p].scoreFor += s1;
                                         stats[p].scoreAgainst += s2;
@@ -376,6 +390,7 @@
                                 match.team2.forEach(p => {
                                     if (stats[p]) {
                                         stats[p].matches++;
+                                        if (t2Wins) stats[p].wins++;
                                         stats[p].points += s2;
                                         stats[p].scoreFor += s2;
                                         stats[p].scoreAgainst += s1;
@@ -387,6 +402,7 @@
 
                     return Object.values(stats).sort((a, b) => {
                         if (b.points !== a.points) return b.points - a.points;
+                        if (b.wins !== a.wins) return b.wins - a.wins;
                         return (b.scoreFor - b.scoreAgainst) - (a.scoreFor - a.scoreAgainst);
                     });
                 }
