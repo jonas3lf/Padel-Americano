@@ -14,15 +14,26 @@
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen font-sans" x-data="americanoApp()">
 
-    <header class="bg-slate-800 border-b border-slate-700 shadow-md sticky top-0 z-50">
-        <div class="max-w-5xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
-            <h1 class="text-2xl font-black tracking-wider text-emerald-400 flex items-center gap-2">
-                <span class="bg-emerald-500/20 p-2 rounded-xl border border-emerald-500/30 text-xl">🎾</span> PADEL AMERICANO / MEXICANO
-            </h1>
-            <nav class="flex bg-slate-900 p-1 rounded-xl border border-slate-700 text-sm">
-                <button @click="tab = 'setup'" :class="tab === 'setup' ? 'bg-emerald-600 text-white shadow' : 'text-slate-400 hover:text-white'" class="px-4 py-2 rounded-lg font-medium transition">Nastavení</button>
-                <button @click="tab = 'matches'" :class="tab === 'matches' ? 'bg-emerald-600 text-white shadow' : 'text-slate-400 hover:text-white'" class="px-4 py-2 rounded-lg font-medium transition" :disabled="!isStarted">Zápasy</button>
-                <button @click="tab = 'table'" :class="tab === 'table' ? 'bg-emerald-600 text-white shadow' : 'text-slate-400 hover:text-white'" class="px-4 py-2 rounded-lg font-medium transition" :disabled="!isStarted">Živá tabulka</button>
+    <!-- HLAVIČKA APLIKACE -->
+    <header class="bg-slate-800 border-b border-slate-700 shadow-md sticky top-0 z-50 px-4 py-3">
+        <div class="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+            
+            <!-- Logo vlevo + Názvy vpravo od něj -->
+            <div class="flex items-center gap-3 w-full sm:w-auto">
+                <div class="bg-emerald-500/20 w-12 h-12 rounded-2xl border border-emerald-500/30 flex items-center justify-center text-2xl shrink-0 shadow-inner">
+                    🎾
+                </div>
+                <div class="flex flex-col">
+                    <span class="text-xs font-black tracking-widest text-emerald-400 uppercase leading-none">PADEL TURNAJE</span>
+                    <span class="text-base font-extrabold text-white tracking-wide mt-0.5">AMERICANO & MEXICANO</span>
+                </div>
+            </div>
+
+            <!-- Navigační tlačítka (vše na jednom řádku) -->
+            <nav class="flex bg-slate-900 p-1 rounded-xl border border-slate-700 text-xs w-full sm:w-auto justify-between sm:justify-start">
+                <button @click="tab = 'setup'" :class="tab === 'setup' ? 'bg-emerald-600 text-white shadow' : 'text-slate-400 hover:text-white'" class="flex-1 sm:flex-none px-3.5 py-2 rounded-lg font-semibold transition text-center">Nastavení</button>
+                <button @click="tab = 'matches'" :class="tab === 'matches' ? 'bg-emerald-600 text-white shadow' : 'text-slate-400 hover:text-white'" class="flex-1 sm:flex-none px-3.5 py-2 rounded-lg font-semibold transition text-center" :disabled="!isStarted">Zápasy</button>
+                <button @click="tab = 'table'" :class="tab === 'table' ? 'bg-emerald-600 text-white shadow' : 'text-slate-400 hover:text-white'" class="flex-1 sm:flex-none px-3.5 py-2 rounded-lg font-semibold transition text-center" :disabled="!isStarted">Živá tabulka</button>
             </nav>
         </div>
     </header>
