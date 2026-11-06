@@ -27,7 +27,11 @@
         <!-- 1. SEKCE: NASTAVENÍ -->
         <div x-show="tab === 'setup'" class="space-y-6">
             <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl">
-                <h2 class="text-lg font-bold mb-4 text-emerald-300">1. Seznam hráčů</h2>
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-bold text-emerald-300">1. Seznam hráčů</h2>
+                    <button @click="clearPlayers" class="text-xs text-rose-400 hover:text-rose-300 font-semibold bg-rose-500/10 px-3 py-1.5 rounded-lg border border-rose-500/20 transition">Smazat všechny hráče</button>
+                </div>
+
                 <div class="flex gap-2 mb-4">
                     <input type="text" x-model="newPlayerName" @keydown.enter="addPlayer" placeholder="Jméno hráče..." class="flex-1 bg-slate-900 border border-slate-700 px-4 py-2.5 rounded-xl text-white focus:outline-none focus:border-emerald-500">
                     <button @click="addPlayer" class="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-xl font-bold transition">Přidat</button>
@@ -47,7 +51,7 @@
                         </div>
                     </template>
                 </div>
-                <p class="text-xs text-slate-400 mt-3">Celkem hráčů: <span class="font-bold text-white" x-text="players.length"></span> (ideálně násobek 4)</p>
+                <p class="text-xs text-slate-400 mt-3">Celkem hráčů: <span class="font-bold text-white" x-text="players.length"></span> (pro ideální Americano je nejlepší násobek 4)</p>
             </div>
 
             <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl">
@@ -63,9 +67,14 @@
                     </div>
                 </div>
 
-                <button @click="generateTournament" class="w-full mt-6 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold py-3.5 px-6 rounded-xl shadow-lg transition">
-                    🚀 Vygenerovat rozlosování turnaje
-                </button>
+                <div class="flex gap-4 mt-6">
+                    <button @click="generateTournament" class="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold py-3.5 px-6 rounded-xl shadow-lg transition">
+                        🚀 Vygenerovat rozlosování
+                    </button>
+                    <button @click="resetTournament" class="bg-rose-600/20 hover:bg-rose-600/30 text-rose-400 border border-rose-500/30 font-bold py-3.5 px-4 rounded-xl transition text-sm">
+                        Reset / Smazat vše
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -80,9 +89,17 @@
                 <div class="text-xs text-slate-400">Zápasy se ukládají automaticky</div>
             </div>
 
+            <!-- Informace o hráčích s volnem v tomto kole -->
+            <template x-if="rounds.length > 0 && rounds[currentRound].resting && rounds[currentRound].resting.length > 0">
+                <div class="bg-amber-500/10 border border-amber-500/20 text-amber-300 px-4 py-3 rounded-xl text-sm flex items-center gap-2">
+                    <span class="font-bold">☕ Volno v tomto kole:</span>
+                    <span x-text="rounds[currentRound].resting.join(', ')"></span>
+                </div>
+            </template>
+
             <template x-if="rounds.length > 0">
                 <div class="space-y-4">
-                    <template x-for="(match, mIndex) in rounds[currentRound]" :key="mIndex">
+                    <template x-for="(match, mIndex) in rounds[currentRound].matches" :key="mIndex">
                         <div class="bg-slate-800 border border-slate-700 p-5 rounded-2xl shadow-lg">
                             <div class="text-xs font-bold text-emerald-400 mb-3 uppercase tracking-wider" x-text="'Kurt ' + (mIndex + 1)"></div>
                             
@@ -202,6 +219,22 @@
                     this.saveState();
                 },
 
+                clearPlayers() {
+                    if (confirm('Opravdu chcete smazat všechny hráče?')) {
+                        this.players = [];
+                        this.saveState();
+                    }
+                },
+
+                resetTournament() {
+                    if (confirm('Opravdu chcete vyresetovat turnaj a smazat všechna data?')) {
+                        localStorage.removeItem('padel_americano_state');
+                        this.rounds = [];
+                        this.isStarted = false;
+                        this.tab = 'setup';
+                    }
+                },
+
                 generateTournament() {
                     if (this.players.length < 4) {
                         alert('Pro turnaj Americano je potřeba alespoň 4 hráčů.');
@@ -209,40 +242,66 @@
                     }
 
                     let p = [...this.players];
-                    // Pokud není počet hráčů dělitelný 4, doplníme prázdného "ghost" hráče pro pauzy
-                    while (p.length % 4 !== 0) {
-                        p.push('(Volno)');
-                    }
-
-                    const numPlayers = p.length;
-                    const numRounds = numPlayers - 1; 
+                    let numRounds = p.length % 2 === 0 ? p.length - 1 : p.length;
                     let generatedRounds = [];
 
+                    // Algoritmus pro spravedlivé Americano / Round Robin s podporou lichého počtu
                     let workingPlayers = [...p];
-                    const fixedPlayer = workingPlayers[0];
-                    let rotatingPlayers = workingPlayers.slice(1);
+                    if (workingPlayers.length % 2 !== 0) {
+                        workingPlayers.push(null); // Ghost / Volno pro liché počty
+                    }
+
+                    const n = workingPlayers.length;
 
                     for (let r = 0; r < numRounds; r++) {
-                        let roundPlayers = [fixedPlayer, ...rotatingPlayers];
-                        let matchesInRound = [];
-                        
-                        let matchesPerCourt = Math.floor(roundPlayers.length / 4);
-                        for (let c = 0; c < this.courts && c < matchesPerCourt; c++) {
-                            let team1 = [roundPlayers[c * 2], roundPlayers[roundPlayers.length - 1 - c * 2]];
-                            let team2 = [roundPlayers[c * 2 + 1], roundPlayers[roundPlayers.length - 2 - c * 2]];
+                        let roundPairs = [];
+                        let restingPlayers = [];
 
-                            // Zahrnout zápas pouze pokud neobsahuje volno (ghost) jako celý tým
+                        // Vytvoření dvojic pro dané kolo
+                        for (let i = 0; i < n / 2; i++) {
+                            let p1 = workingPlayers[i];
+                            let p2 = workingPlayers[n - 1 - i];
+
+                            if (p1 === null) restingPlayers.push(p2);
+                            else if (p2 === null) restingPlayers.push(p1);
+                            else {
+                                roundPairs.push([p1, p2]);
+                            }
+                        }
+
+                        // Z dvojic poskládáme zápasy na kurtech (4 hráči na zápas)
+                        let matchesInRound = [];
+                        let currentMatches = Math.floor(roundPairs.length / 2);
+
+                        for (let c = 0; c < this.courts && c < currentMatches; c++) {
+                            let team1_player1 = roundPairs[c * 2][0];
+                            let team1_player2 = roundPairs[c * 2 + 1][1];
+                            let team2_player1 = roundPairs[c * 2][1];
+                            let team2_player2 = roundPairs[c * 2 + 1][0];
+
                             matchesInRound.push({
-                                team1: team1,
-                                team2: team2,
+                                team1: [team1_player1, team1_player2],
+                                team2: [team2_player1, team2_player2],
                                 score1: 0,
                                 score2: 0
                             });
                         }
-                        generatedRounds.push(matchesInRound);
 
-                        // Rotace pro další kolo (Algoritmus pro Americano/Round Robin)
-                        rotatingPlayers.unshift(rotatingPlayers.pop());
+                        // Pokud zbyly liché dvojice, jejich hráči také pauzírují
+                        for (let k = this.courts * 2; k < roundPairs.length; k++) {
+                            restingPlayers.push(roundPairs[k][0], roundPairs[k][1]);
+                        }
+
+                        generatedRounds.push({
+                            matches: matchesInRound,
+                            resting: restingPlayers
+                        });
+
+                        // Rotace hráčů (zachování prvního, rotace zbytku)
+                        let fixed = workingPlayers[0];
+                        let rest = workingPlayers.slice(1);
+                        rest.unshift(rest.pop());
+                        workingPlayers = [fixed, ...rest];
                     }
 
                     this.rounds = generatedRounds;
@@ -253,7 +312,7 @@
                 },
 
                 updateScore(roundIdx, matchIdx, teamNum) {
-                    let match = this.rounds[roundIdx][matchIdx];
+                    let match = this.rounds[roundIdx].matches[matchIdx];
                     if (teamNum === 1) {
                         if (match.score1 > this.pointsPerMatch) match.score1 = this.pointsPerMatch;
                         if (match.score1 < 0) match.score1 = 0;
@@ -273,11 +332,10 @@
                     });
 
                     this.rounds.forEach(round => {
-                        round.forEach(match => {
+                        round.matches.forEach(match => {
                             let s1 = match.score1 || 0;
                             let s2 = match.score2 || 0;
 
-                            // Tým 1
                             match.team1.forEach(p => {
                                 if (stats[p]) {
                                     stats[p].matches++;
@@ -287,7 +345,6 @@
                                 }
                             });
 
-                            // Tým 2
                             match.team2.forEach(p => {
                                 if (stats[p]) {
                                     stats[p].matches++;
