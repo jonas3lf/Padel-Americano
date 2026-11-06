@@ -56,11 +56,20 @@
 
             <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl">
                 <h2 class="text-lg font-bold mb-4 text-emerald-300">2. Parametry turnaje</h2>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                
+                <div class="space-y-4">
                     <div>
-                        <label class="block text-xs text-slate-400 mb-1 font-semibold uppercase">Počet kurtů</label>
-                        <input type="number" x-model.number="courts" min="1" class="w-full bg-slate-900 border border-slate-700 px-4 py-2.5 rounded-xl text-white focus:outline-none focus:border-emerald-500">
+                        <label class="block text-xs text-slate-400 mb-2 font-semibold uppercase">Počet kurtů</label>
+                        <div class="flex flex-wrap gap-2">
+                            <template x-for="c in [1, 2, 3, 4, 5, 6]" :key="c">
+                                <button @click="courts = c" 
+                                    :class="courts === c ? 'bg-emerald-600 text-white border-emerald-500 shadow-lg' : 'bg-slate-900 text-slate-300 border-slate-700 hover:bg-slate-700'"
+                                    class="w-12 h-12 rounded-full border font-bold flex items-center justify-center transition" 
+                                    x-text="c"></button>
+                            </template>
+                        </div>
                     </div>
+
                     <div>
                         <label class="block text-xs text-slate-400 mb-1 font-semibold uppercase">Body na zápas (např. 24, 32)</label>
                         <input type="number" x-model.number="pointsPerMatch" min="4" step="2" class="w-full bg-slate-900 border border-slate-700 px-4 py-2.5 rounded-xl text-white focus:outline-none focus:border-emerald-500">
@@ -79,48 +88,45 @@
         </div>
 
         <!-- 2. SEKCE: ZÁPASY -->
-        <div x-show="tab === 'matches'" class="space-y-6">
-            <div class="flex justify-between items-center bg-slate-800 p-4 rounded-2xl border border-slate-700">
-                <div class="flex items-center gap-2">
-                    <button @click="currentRound > 0 ? currentRound-- : null" class="bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-lg text-sm font-bold" :disabled="currentRound === 0">◀ Předchozí</button>
-                    <span class="font-bold text-emerald-400 px-2">Kolo <span x-text="currentRound + 1"></span> / <span x-text="rounds.length"></span></span>
-                    <button @click="currentRound < rounds.length - 1 ? currentRound++ : null" class="bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-lg text-sm font-bold" :disabled="currentRound === rounds.length - 1">Další ▶</button>
-                </div>
-                <div class="text-xs text-slate-400">Zápasy se ukládají automaticky</div>
+        <div x-show="tab === 'matches'" class="space-y-4">
+            <div class="flex justify-between items-center bg-slate-800 p-3 rounded-2xl border border-slate-700 gap-2">
+                <button @click="currentRound > 0 ? currentRound-- : null" class="flex-1 bg-slate-700 hover:bg-slate-600 py-2 px-3 rounded-xl text-sm font-bold text-center transition" :disabled="currentRound === 0">◀ Předchozí</button>
+                <span class="font-bold text-emerald-400 px-2 whitespace-nowrap text-sm">Kolo <span x-text="currentRound + 1"></span> / <span x-text="rounds.length"></span></span>
+                <button @click="currentRound < rounds.length - 1 ? currentRound++ : null" class="flex-1 bg-slate-700 hover:bg-slate-600 py-2 px-3 rounded-xl text-sm font-bold text-center transition" :disabled="currentRound === rounds.length - 1">Další ▶</button>
             </div>
 
             <!-- Informace o hráčích s volnem v tomto kole -->
             <template x-if="rounds.length > 0 && rounds[currentRound].resting && rounds[currentRound].resting.length > 0">
-                <div class="bg-amber-500/10 border border-amber-500/20 text-amber-300 px-4 py-3 rounded-xl text-sm flex items-center gap-2">
-                    <span class="font-bold">☕ Volno v tomto kole:</span>
+                <div class="bg-amber-500/10 border border-amber-500/20 text-amber-300 px-3 py-2 rounded-xl text-xs flex items-center gap-2">
+                    <span class="font-bold">☕ Volno:</span>
                     <span x-text="rounds[currentRound].resting.join(', ')"></span>
                 </div>
             </template>
 
             <template x-if="rounds.length > 0">
-                <div class="space-y-4">
+                <div class="space-y-3">
                     <template x-for="(match, mIndex) in rounds[currentRound].matches" :key="mIndex">
-                        <div class="bg-slate-800 border border-slate-700 p-5 rounded-2xl shadow-lg">
-                            <div class="text-xs font-bold text-emerald-400 mb-3 uppercase tracking-wider" x-text="'Kurt ' + (mIndex + 1)"></div>
+                        <div class="bg-slate-800 border border-slate-700 p-3.5 rounded-2xl shadow-md">
+                            <div class="text-[11px] font-bold text-emerald-400 mb-2 uppercase tracking-wider" x-text="'Kurt ' + (mIndex + 1)"></div>
                             
-                            <div class="grid grid-cols-1 md:grid-cols-5 items-center gap-4">
+                            <div class="grid grid-cols-1 md:grid-cols-5 items-center gap-2">
                                 <!-- Tým 1 -->
-                                <div class="md:col-span-2 bg-slate-900/60 p-3 rounded-xl border border-slate-700/50">
-                                    <div class="text-xs text-slate-400 mb-1 font-semibold">Tým 1</div>
-                                    <div class="text-sm font-bold text-white" x-text="match.team1[0] + ' & ' + match.team1[1]"></div>
+                                <div class="md:col-span-2 bg-slate-900/60 px-3 py-2 rounded-xl border border-slate-700/50">
+                                    <div class="text-[10px] text-slate-400 font-semibold">Tým 1</div>
+                                    <div class="text-xs font-bold text-white truncate" x-text="match.team1[0] + ' & ' + match.team1[1]"></div>
                                 </div>
 
                                 <!-- Skóre / Výsledek -->
-                                <div class="flex justify-center items-center gap-3">
-                                    <input type="number" min="0" :max="pointsPerMatch" x-model.number="match.score1" @input="updateScore(currentRound, mIndex, 1)" class="w-16 h-14 bg-slate-900 border border-slate-700 text-center text-xl font-black rounded-xl text-emerald-400 focus:outline-none focus:border-emerald-500">
+                                <div class="flex justify-center items-center gap-2 my-1 md:my-0">
+                                    <input type="number" min="0" :max="pointsPerMatch" x-model.number="match.score1" @input="updateScore(currentRound, mIndex, 1)" class="w-14 h-11 bg-slate-900 border border-slate-700 text-center text-lg font-black rounded-xl text-emerald-400 focus:outline-none focus:border-emerald-500">
                                     <span class="text-slate-500 font-bold">:</span>
-                                    <input type="number" min="0" :max="pointsPerMatch" x-model.number="match.score2" @input="updateScore(currentRound, mIndex, 2)" class="w-16 h-14 bg-slate-900 border border-slate-700 text-center text-xl font-black rounded-xl text-emerald-400 focus:outline-none focus:border-emerald-500">
+                                    <input type="number" min="0" :max="pointsPerMatch" x-model.number="match.score2" @input="updateScore(currentRound, mIndex, 2)" class="w-14 h-11 bg-slate-900 border border-slate-700 text-center text-lg font-black rounded-xl text-emerald-400 focus:outline-none focus:border-emerald-500">
                                 </div>
 
                                 <!-- Tým 2 -->
-                                <div class="md:col-span-2 bg-slate-900/60 p-3 rounded-xl border border-slate-700/50 text-right md:text-left">
-                                    <div class="text-xs text-slate-400 mb-1 font-semibold">Tým 2</div>
-                                    <div class="text-sm font-bold text-white" x-text="match.team2[0] + ' & ' + match.team2[1]"></div>
+                                <div class="md:col-span-2 bg-slate-900/60 px-3 py-2 rounded-xl border border-slate-700/50 text-right md:text-left">
+                                    <div class="text-[10px] text-slate-400 font-semibold">Tým 2</div>
+                                    <div class="text-xs font-bold text-white truncate" x-text="match.team2[0] + ' & ' + match.team2[1]"></div>
                                 </div>
                             </div>
                         </div>
@@ -132,7 +138,7 @@
         <!-- 3. SEKCE: ŽIVÁ TABULKA -->
         <div x-show="tab === 'table'" class="space-y-6">
             <div class="bg-slate-800 border border-slate-700 rounded-2xl shadow-xl overflow-hidden">
-                <div class="p-4 bg-slate-800/80 border-b border-slate-700 font-bold text-emerald-300">Průběžné pořadí hráčů</div>
+                <div class="p-4 bg-slate-800/80 border-b border-slate-700 font-bold text-emerald-300">Průběžné pořadí hráčů (započteno odehraných kol)</div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
                         <thead>
@@ -245,10 +251,9 @@
                     let numRounds = p.length % 2 === 0 ? p.length - 1 : p.length;
                     let generatedRounds = [];
 
-                    // Algoritmus pro spravedlivé Americano / Round Robin s podporou lichého počtu
                     let workingPlayers = [...p];
                     if (workingPlayers.length % 2 !== 0) {
-                        workingPlayers.push(null); // Ghost / Volno pro liché počty
+                        workingPlayers.push(null); 
                     }
 
                     const n = workingPlayers.length;
@@ -257,7 +262,6 @@
                         let roundPairs = [];
                         let restingPlayers = [];
 
-                        // Vytvoření dvojic pro dané kolo
                         for (let i = 0; i < n / 2; i++) {
                             let p1 = workingPlayers[i];
                             let p2 = workingPlayers[n - 1 - i];
@@ -269,7 +273,6 @@
                             }
                         }
 
-                        // Z dvojic poskládáme zápasy na kurtech (4 hráči na zápas)
                         let matchesInRound = [];
                         let currentMatches = Math.floor(roundPairs.length / 2);
 
@@ -283,11 +286,11 @@
                                 team1: [team1_player1, team1_player2],
                                 team2: [team2_player1, team2_player2],
                                 score1: 0,
-                                score2: 0
+                                score2: 0,
+                                played: false
                             });
                         }
 
-                        // Pokud zbyly liché dvojice, jejich hráči také pauzírují
                         for (let k = this.courts * 2; k < roundPairs.length; k++) {
                             restingPlayers.push(roundPairs[k][0], roundPairs[k][1]);
                         }
@@ -297,7 +300,6 @@
                             resting: restingPlayers
                         });
 
-                        // Rotace hráčů (zachování prvního, rotace zbytku)
                         let fixed = workingPlayers[0];
                         let rest = workingPlayers.slice(1);
                         rest.unshift(rest.pop());
@@ -322,6 +324,7 @@
                         if (match.score2 < 0) match.score2 = 0;
                         match.score1 = this.pointsPerMatch - match.score2;
                     }
+                    match.played = true;
                     this.saveState();
                 },
 
@@ -333,26 +336,28 @@
 
                     this.rounds.forEach(round => {
                         round.matches.forEach(match => {
-                            let s1 = match.score1 || 0;
-                            let s2 = match.score2 || 0;
+                            if (match.played || match.score1 > 0 || match.score2 > 0) {
+                                let s1 = match.score1 || 0;
+                                let s2 = match.score2 || 0;
 
-                            match.team1.forEach(p => {
-                                if (stats[p]) {
-                                    stats[p].matches++;
-                                    stats[p].points += s1;
-                                    stats[p].scoreFor += s1;
-                                    stats[p].scoreAgainst += s2;
-                                }
-                            });
+                                match.team1.forEach(p => {
+                                    if (stats[p]) {
+                                        stats[p].matches++;
+                                        stats[p].points += s1;
+                                        stats[p].scoreFor += s1;
+                                        stats[p].scoreAgainst += s2;
+                                    }
+                                });
 
-                            match.team2.forEach(p => {
-                                if (stats[p]) {
-                                    stats[p].matches++;
-                                    stats[p].points += s2;
-                                    stats[p].scoreFor += s2;
-                                    stats[p].scoreAgainst += s1;
-                                }
-                            });
+                                match.team2.forEach(p => {
+                                    if (stats[p]) {
+                                        stats[p].matches++;
+                                        stats[p].points += s2;
+                                        stats[p].scoreFor += s2;
+                                        stats[p].scoreAgainst += s1;
+                                    }
+                                });
+                            }
                         });
                     });
 
