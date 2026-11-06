@@ -306,51 +306,48 @@
                         return;
                     }
 
-                    let numRounds = this.players.length;
-                    
                     if (this.format === 'americano') {
-                        let p = [...this.players];
+                        let numPlayers = this.players.length;
+                        let slotsPerRound = this.courts * 4; // např. 2 kurty = 8 hrajících míst
                         let generatedRounds = [];
-                        
-                        // Generování spravedlivého rozpisu metodou rotace (Circle method)
-                        // Zajišťuje, že každý hráč má přesně stejný počet zápasů a pauz
-                        let workingPlayers = [...p];
-                        let needsDummy = workingPlayers.length % 2 !== 0;
-                        if (needsDummy) workingPlayers.push(null);
-                        
-                        const totalSlots = workingPlayers.length;
-                        numRounds = totalSlots;
 
-                        for (let r = 0; r < numRounds; r++) {
-                            let restingPlayers = [];
-                            let activePlayersInRound = [];
+                        // Určíme, kolik kol turnaj bude mít (ideálně tolik, aby se hráči vystřídali, nebo standardně podle počtu hráčů)
+                        let totalRounds = numPlayers % 2 === 0 ? numPlayers - 1 : numPlayers;
+                        if (numPlayers === 10 && this.courts === 2) {
+                            totalRounds = 5; // Pro 10 lidí na 2 kurtech znamená 5 kol, že každý hraje 4 zápasy a 1x sedí
+                        }
 
-                            for (let i = 0; i < totalSlots / 2; i++) {
-                                let p1 = workingPlayers[i];
-                                let p2 = workingPlayers[totalSlots - 1 - i];
+                        // Sledujeme, kolikrát každý hráč pauzíroval, abychom zajistili spravedlnost
+                        let restCounts = {};
+                        this.players.forEach(p => restCounts[p] = 0);
 
-                                if (p1 === null) restingPlayers.push(p2);
-                                else if (p2 === null) restingPlayers.push(p1);
-                                else {
-                                    activePlayersInRound.push(p1, p2);
-                                }
+                        let pList = [...this.players];
+
+                        for (let r = 0; r < totalRounds; r++) {
+                            // Vybereme do tohoto kola hrající hráče tak, aby ty 2 pozice (pokud jich je 10) dostali ti, co nejméně odpočívali
+                            let restingThisRound = [];
+                            let playingThisRound = [...pList];
+
+                            if (playingThisRound.length > slotsPerRound) {
+                                let restingCountNeeded = playingThisRound.length - slotsPerRound;
+                                
+                                // Seřadíme hráče podle toho, kolikrát už seděli (kdo seděl méněkrát, jde sedět teď)
+                                playingThisRound.sort((a, b) => restCounts[a] - restCounts[b]);
+                                
+                                restingThisRound = playingThisRound.slice(0, restingCountNeeded);
+                                playingThisRound = playingThisRound.slice(restingCountNeeded);
                             }
 
-                            // Sestavení zápasů pro kurty z aktivních hráčů daného kola
+                            // Zamícháme hrající hráče pro spravedlivé dvojice v tomto kole
+                            playingThisRound.sort(() => Math.random() - 0.5);
+
+                            // Sestavíme zápasy na kurty
                             let matchesInRound = [];
-                            let slotsNeeded = this.courts * 4;
-                            
-                            // Pokud máme víc aktivních hráčů než kolik se jich vejde na kurty, přebyteční odpočívají
-                            while (activePlayersInRound.length > slotsNeeded) {
-                                restingPlayers.push(activePlayersInRound.pop());
-                                restingPlayers.push(activePlayersInRound.pop());
-                            }
-
-                            for (let c = 0; c < this.courts && activePlayersInRound.length >= 4; c++) {
-                                let t1p1 = activePlayersInRound.shift();
-                                let t1p2 = activePlayersInRound.shift();
-                                let t2p1 = activePlayersInRound.shift();
-                                let t2p2 = activePlayersInRound.shift();
+                            for (let c = 0; c < this.courts && playingThisRound.length >= 4; c++) {
+                                let t1p1 = playingThisRound.pop();
+                                let t1p2 = playingThisRound.pop();
+                                let t2p1 = playingThisRound.pop();
+                                let t2p2 = playingThisRound.pop();
 
                                 matchesInRound.push({
                                     team1: [t1p1, t1p2],
@@ -361,14 +358,18 @@
                                 });
                             }
 
-                            generatedRounds.push({ matches: matchesInRound, resting: restingPlayers });
+                            // Aktualizujeme počítadlo pauz
+                            restingThisRound.forEach(p => restCounts[p]++);
 
-                            // Rotace pro další kolo (fixní první prvek, rot zbytku)
-                            let fixed = workingPlayers[0];
-                            let rest = workingPlayers.slice(1);
-                            rest.unshift(rest.pop());
-                            workingPlayers = [fixed, ...rest];
+                            generatedRounds.push({
+                                matches: matchesInRound,
+                                resting: restingThisRound
+                            });
+
+                            // Rotace seznamu hráčů pro příští kolo
+                            pList.push(pList.shift());
                         }
+
                         this.rounds = generatedRounds;
                     } else {
                         let generatedRounds = [];
@@ -391,14 +392,14 @@
                     let sortedPlayers = currentStandings.map(s => s.name);
 
                     let restingPlayers = [];
-                    if (sortedPlayers.length % 2 !== 0) {
-                        restingPlayers.push(sortedPlayers.pop());
+                    let slotsPerRound = this.courts * 4;
+                    if (sortedPlayers.length > slotsPerRound) {
+                        restingPlayers = sortedPlayers.slice(slotsPerRound);
+                        sortedPlayers = sortedPlayers.slice(0, slotsPerRound);
                     }
 
                     let matchesInRound = [];
-                    let maxMatches = Math.min(this.courts, Math.floor(sortedPlayers.length / 4));
-
-                    for (let c = 0; c < maxMatches; c++) {
+                    for (let c = 0; c < this.courts && sortedPlayers.length >= 4; c++) {
                         let p1 = sortedPlayers[c * 4];
                         let p2 = sortedPlayers[c * 4 + 1];
                         let p3 = sortedPlayers[c * 4 + 2];
@@ -411,10 +412,6 @@
                             score2: '',
                             played: false
                         });
-                    }
-
-                    for (let i = maxMatches * 4; i < sortedPlayers.length; i++) {
-                        restingPlayers.push(sortedPlayers[i]);
                     }
 
                     this.rounds[roundIdx] = {
@@ -459,7 +456,7 @@
 
                                 match.team1.forEach(p => {
                                     if (stats[p]) {
-                                    stats[p].matches++;
+                                        stats[p].matches++;
                                         if (t1Wins) stats[p].wins++;
                                         stats[p].points += s1;
                                         stats[p].scoreFor += s1;
