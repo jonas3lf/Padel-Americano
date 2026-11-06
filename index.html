@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Padel Americano & Mexicano</title>
-    <!-- Odkaz na tvou nahranou ikonu IMG_2294.jpeg -->
     <link rel="icon" type="image/jpeg" href="IMG_2294.jpeg">
     <link rel="apple-touch-icon" href="IMG_2294.jpeg">
     
@@ -219,7 +218,7 @@
             return {
                 tab: 'setup',
                 format: 'americano',
-                players: ['Jan', 'Petr', 'Pavel', 'Tomáš', 'Ondřej', 'Martin', 'Lukáš', 'David'],
+                players: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
                 newPlayerName: '',
                 bulkPlayers: '',
                 courts: 2,
@@ -307,52 +306,64 @@
                         return;
                     }
 
-                    let numRounds = this.players.length % 2 === 0 ? this.players.length - 1 : this.players.length;
+                    let numRounds = this.players.length;
                     
                     if (this.format === 'americano') {
                         let p = [...this.players];
                         let generatedRounds = [];
+                        
+                        // Generování spravedlivého rozpisu metodou rotace (Circle method)
+                        // Zajišťuje, že každý hráč má přesně stejný počet zápasů a pauz
                         let workingPlayers = [...p];
-                        if (workingPlayers.length % 2 !== 0) workingPlayers.push(null); 
-                        const n = workingPlayers.length;
+                        let needsDummy = workingPlayers.length % 2 !== 0;
+                        if (needsDummy) workingPlayers.push(null);
+                        
+                        const totalSlots = workingPlayers.length;
+                        numRounds = totalSlots;
 
                         for (let r = 0; r < numRounds; r++) {
-                            let roundPairs = [];
                             let restingPlayers = [];
+                            let activePlayersInRound = [];
 
-                            for (let i = 0; i < n / 2; i++) {
+                            for (let i = 0; i < totalSlots / 2; i++) {
                                 let p1 = workingPlayers[i];
-                                let p2 = workingPlayers[n - 1 - i];
+                                let p2 = workingPlayers[totalSlots - 1 - i];
 
                                 if (p1 === null) restingPlayers.push(p2);
                                 else if (p2 === null) restingPlayers.push(p1);
-                                else roundPairs.push([p1, p2]);
+                                else {
+                                    activePlayersInRound.push(p1, p2);
+                                }
                             }
 
+                            // Sestavení zápasů pro kurty z aktivních hráčů daného kola
                             let matchesInRound = [];
-                            let currentMatches = Math.floor(roundPairs.length / 2);
+                            let slotsNeeded = this.courts * 4;
+                            
+                            // Pokud máme víc aktivních hráčů než kolik se jich vejde na kurty, přebyteční odpočívají
+                            while (activePlayersInRound.length > slotsNeeded) {
+                                restingPlayers.push(activePlayersInRound.pop());
+                                restingPlayers.push(activePlayersInRound.pop());
+                            }
 
-                            for (let c = 0; c < this.courts && c < currentMatches; c++) {
-                                let team1_player1 = roundPairs[c * 2][0];
-                                let team1_player2 = roundPairs[c * 2 + 1][1];
-                                let team2_player1 = roundPairs[c * 2][1];
-                                let team2_player2 = roundPairs[c * 2 + 1][0];
+                            for (let c = 0; c < this.courts && activePlayersInRound.length >= 4; c++) {
+                                let t1p1 = activePlayersInRound.shift();
+                                let t1p2 = activePlayersInRound.shift();
+                                let t2p1 = activePlayersInRound.shift();
+                                let t2p2 = activePlayersInRound.shift();
 
                                 matchesInRound.push({
-                                    team1: [team1_player1, team1_player2],
-                                    team2: [team2_player1, team2_player2],
+                                    team1: [t1p1, t1p2],
+                                    team2: [t2p1, t2p2],
                                     score1: '',
                                     score2: '',
                                     played: false
                                 });
                             }
 
-                            for (let k = this.courts * 2; k < roundPairs.length; k++) {
-                                restingPlayers.push(roundPairs[k][0], roundPairs[k][1]);
-                            }
-
                             generatedRounds.push({ matches: matchesInRound, resting: restingPlayers });
 
+                            // Rotace pro další kolo (fixní první prvek, rot zbytku)
                             let fixed = workingPlayers[0];
                             let rest = workingPlayers.slice(1);
                             rest.unshift(rest.pop());
@@ -361,7 +372,8 @@
                         this.rounds = generatedRounds;
                     } else {
                         let generatedRounds = [];
-                        for (let r = 0; r < numRounds; r++) {
+                        let numRoundsMex = this.players.length % 2 === 0 ? this.players.length - 1 : this.players.length;
+                        for (let r = 0; r < numRoundsMex; r++) {
                             generatedRounds.push({ matches: [], resting: [] });
                         }
                         this.rounds = generatedRounds;
@@ -447,7 +459,7 @@
 
                                 match.team1.forEach(p => {
                                     if (stats[p]) {
-                                        stats[p].matches++;
+                                    stats[p].matches++;
                                         if (t1Wins) stats[p].wins++;
                                         stats[p].points += s1;
                                         stats[p].scoreFor += s1;
