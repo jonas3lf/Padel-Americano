@@ -6,8 +6,22 @@
     <title>Padel Americano & Mexicano</title>
     <!-- Favicon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎾</text></svg>">
-    <!-- Ikona pro plochu iOS (Apple Touch Icon) -->
+    <!-- Apple Touch Icon -->
     <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 512 512%22><rect width=%22512%22 height=%22512%22 rx=%22115%22 fill=%22%2310b981%22/><text x=%2250%25%22 y=%2255%25%22 dominant-baseline=%22central%22 text-anchor=%22middle%22 font-size=%22280%22>🎾</text></svg>">
+    <!-- Web App Manifest přes Data URI, aby iOS nehledal externí soubor -->
+    <link rel="manifest" href='data:application/manifest+json,{
+        "name": "Padel Americano & Mexicano",
+        "short_name": "Padel",
+        "start_url": "./",
+        "display": "standalone",
+        "background_color": "%230f172a",
+        "theme_color": "%230f172a",
+        "icons": [{
+            "src": "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 512 512%22><rect width=%22512%22 height=%22512%22 rx=%22115%22 fill=%22%2310b981%22/><text x=%2250%25%22 y=%2255%25%22 dominant-baseline=%22central%22 text-anchor=%22middle%22 font-size=%22280%22>🎾</text></svg>",
+            "sizes": "512x512",
+            "type": "image/svg+xml"
+        }]
+    }'>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/alpinejs" defer></script>
@@ -18,7 +32,6 @@
     <header class="bg-slate-800 border-b border-slate-700 shadow-md sticky top-0 z-50 px-4 py-3">
         <div class="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
             
-            <!-- Logo vlevo + Názvy vpravo od něj -->
             <div class="flex items-center gap-3 w-full sm:w-auto">
                 <div class="bg-emerald-500/20 w-12 h-12 rounded-2xl border border-emerald-500/30 flex items-center justify-center text-2xl shrink-0 shadow-inner">
                     🎾
@@ -29,7 +42,6 @@
                 </div>
             </div>
 
-            <!-- Navigační tlačítka (vše na jednom řádku) -->
             <nav class="flex bg-slate-900 p-1 rounded-xl border border-slate-700 text-xs w-full sm:w-auto justify-between sm:justify-start">
                 <button @click="tab = 'setup'" :class="tab === 'setup' ? 'bg-emerald-600 text-white shadow' : 'text-slate-400 hover:text-white'" class="flex-1 sm:flex-none px-3.5 py-2 rounded-lg font-semibold transition text-center">Nastavení</button>
                 <button @click="tab = 'matches'" :class="tab === 'matches' ? 'bg-emerald-600 text-white shadow' : 'text-slate-400 hover:text-white'" class="flex-1 sm:flex-none px-3.5 py-2 rounded-lg font-semibold transition text-center" :disabled="!isStarted">Zápasy</button>
@@ -121,14 +133,12 @@
 
         <!-- 2. SEKCE: ZÁPASY -->
         <div x-show="tab === 'matches'" class="space-y-4">
-            <!-- Horní lišta pro přepínání kol -->
             <div class="flex justify-between items-center bg-slate-800 p-3 rounded-2xl border border-slate-700 gap-2">
                 <button @click="currentRound > 0 ? currentRound-- : null" class="flex-1 bg-slate-700 hover:bg-slate-600 py-2 px-3 rounded-xl text-sm font-bold text-center transition" :disabled="currentRound === 0">◀ Předchozí</button>
                 <span class="font-bold text-emerald-400 px-2 whitespace-nowrap text-sm">Kolo <span x-text="currentRound + 1"></span> / <span x-text="rounds.length"></span></span>
                 <button @click="nextRound()" class="flex-1 bg-slate-700 hover:bg-slate-600 py-2 px-3 rounded-xl text-sm font-bold text-center transition">Další ▶</button>
             </div>
 
-            <!-- Informace o hráčích, kteří v tomto kole sedí / nehrají -->
             <template x-if="rounds.length > 0">
                 <div class="bg-amber-500/10 border border-amber-500/20 text-amber-300 p-3.5 rounded-2xl text-xs flex flex-col gap-1.5 shadow-md">
                     <div class="flex items-center gap-1.5 font-bold uppercase tracking-wider text-amber-400">
@@ -147,7 +157,6 @@
                 </div>
             </template>
 
-            <!-- Seznam kurtů a zápasů -->
             <template x-if="rounds.length > 0">
                 <div class="space-y-3">
                     <template x-for="(match, mIndex) in rounds[currentRound].matches" :key="mIndex">
@@ -155,20 +164,17 @@
                             <div class="text-[11px] font-bold text-emerald-400 mb-2 uppercase tracking-wider" x-text="'Kurt ' + (mIndex + 1)"></div>
                             
                             <div class="grid grid-cols-1 md:grid-cols-5 items-center gap-2">
-                                <!-- Tým 1 -->
                                 <div class="md:col-span-2 bg-slate-900/60 px-3 py-2 rounded-xl border border-slate-700/50">
                                     <div class="text-[10px] text-slate-400 font-semibold">Tým 1</div>
                                     <div class="text-xs font-bold text-white truncate" x-text="match.team1[0] + ' & ' + match.team1[1]"></div>
                                 </div>
 
-                                <!-- Skóre / Výsledek -->
                                 <div class="flex justify-center items-center gap-2 my-1 md:my-0">
                                     <input type="number" min="0" :max="pointsPerMatch" x-model.number="match.score1" @input="updateScore(currentRound, mIndex, 1)" placeholder="-" class="w-14 h-11 bg-slate-900 border border-slate-700 text-center text-lg font-black rounded-xl text-emerald-400 focus:outline-none focus:border-emerald-500">
                                     <span class="text-slate-500 font-bold">:</span>
                                     <input type="number" min="0" :max="pointsPerMatch" x-model.number="match.score2" @input="updateScore(currentRound, mIndex, 2)" placeholder="-" class="w-14 h-11 bg-slate-900 border border-slate-700 text-center text-lg font-black rounded-xl text-emerald-400 focus:outline-none focus:border-emerald-500">
                                 </div>
 
-                                <!-- Tým 2 -->
                                 <div class="md:col-span-2 bg-slate-900/60 px-3 py-2 rounded-xl border border-slate-700/50 text-right md:text-left">
                                     <div class="text-[10px] text-slate-400 font-semibold">Tým 2</div>
                                     <div class="text-xs font-bold text-white truncate" x-text="match.team2[0] + ' & ' + match.team2[1]"></div>
@@ -179,7 +185,6 @@
                 </div>
             </template>
 
-            <!-- Dolní lišta pro přepínání kol -->
             <template x-if="rounds.length > 0">
                 <div class="flex justify-between items-center bg-slate-800 p-3 rounded-2xl border border-slate-700 gap-2 mt-4">
                     <button @click="currentRound > 0 ? currentRound-- : null; window.scrollTo({top: 0, behavior: 'smooth'})" class="flex-1 bg-slate-700 hover:bg-slate-600 py-2 px-3 rounded-xl text-sm font-bold text-center transition" :disabled="currentRound === 0">◀ Předchozí</button>
@@ -261,6 +266,8 @@
                         isStarted: this.isStarted
                     }));
                 },
+
+                addPanel() {},
 
                 addPlayer() {
                     if (this.newPlayerName.trim()) {
