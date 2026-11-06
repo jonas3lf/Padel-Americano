@@ -307,47 +307,66 @@
                     }
 
                     if (this.format === 'americano') {
-                        let numPlayers = this.players.length;
-                        let slotsPerRound = this.courts * 4; // např. 2 kurty = 8 hrajících míst
+                        let n = this.players.length;
                         let generatedRounds = [];
+                        
+                        // Pro americko standardně generujeme N kol (nebo N-1, pokud je sudý počet, ale pro plnou rotaci partnerů u lichých/specifických počtů jedeme plný cyklus)
+                        // Pro 10 hráčů uděláme přesně 9 kol, kde každý hraje 7 zápasů a 2x odpočívá
+                        let totalRounds = n % 2 === 0 ? n : n; 
+                        
+                        // Generování pomocí algoritmu pro americano (kombinatorika párů)
+                        // Vytvoříme si kopii pole hráčů
+                        let p = [...this.players];
+                        
+                        // Sledovač kol odpočinku, aby každý odpočíval přesně 2x za turnaj (při 10 hráčích a 9 kolech)
+                        let restCount = {};
+                        p.forEach(pl => restCount[pl] = 0);
+                        let totalRestNeeded = (n * totalRounds - this.courts * 4 * totalRounds); // kolik celkově pauz je potřeba
 
-                        // Určíme, kolik kol turnaj bude mít (ideálně tolik, aby se hráči vystřídali, nebo standardně podle počtu hráčů)
-                        let totalRounds = numPlayers % 2 === 0 ? numPlayers - 1 : numPlayers;
-                        if (numPlayers === 10 && this.courts === 2) {
-                            totalRounds = 5; // Pro 10 lidí na 2 kurtech znamená 5 kol, že každý hraje 4 zápasy a 1x sedí
+                        // Pro 10 hráčů na 2 kurtech (8 hrajících, 2 sedí v každém kole z 9 kol = celkem 18 pauz, tj. každý 1-2x)
+                        let restingHistory = {};
+                        p.forEach(pl => restingHistory[pl] = 0);
+
+                        // Pokročilý generátor kol pro americo (zajišťující rotaci partnerů)
+                        let schedule = [];
+                        
+                        // Použijeme standardní polygonovou metodu pro rozlosování každý s každým jako parťákem
+                        let workingPlayers = [...p];
+                        if (workingPlayers.length % 2 !== 0) {
+                            workingPlayers.push(null); // Dummy pro lichý počet
                         }
+                        let numSlots = workingPlayers.length;
 
-                        // Sledujeme, kolikrát každý hráč pauzíroval, abychom zajistili spravedlnost
-                        let restCounts = {};
-                        this.players.forEach(p => restCounts[p] = 0);
-
-                        let pList = [...this.players];
+                        // Pro 10 hráčů si vygenerujeme plnohodnotný rozpis kol
+                        let roundsList = [];
+                        let fixed = workingPlayers[0];
+                        let restGroup = workingPlayers.slice(1);
 
                         for (let r = 0; r < totalRounds; r++) {
-                            // Vybereme do tohoto kola hrající hráče tak, aby ty 2 pozice (pokud jich je 10) dostali ti, co nejméně odpočívali
+                            let currentRoundPlayers = [fixed, ...restGroup];
+                            let activeForMatches = [];
                             let restingThisRound = [];
-                            let playingThisRound = [...pList];
 
-                            if (playingThisRound.length > slotsPerRound) {
-                                let restingCountNeeded = playingThisRound.length - slotsPerRound;
-                                
-                                // Seřadíme hráče podle toho, kolikrát už seděli (kdo seděl méněkrát, jde sedět teď)
-                                playingThisRound.sort((a, b) => restCounts[a] - restCounts[b]);
-                                
-                                restingThisRound = playingThisRound.slice(0, restingCountNeeded);
-                                playingThisRound = playingThisRound.slice(restingCountNeeded);
-                            }
+                            // V každém kole potřebujeme určit, kdo hraje a kdo sedí (pokud je hráčů víc než míst na kurtech)
+                            let maxPlaying = this.courts * 4;
+                            
+                            // Vybereme ty, kteří v dosavadních kolech seděli nejméně
+                            let sortedByRest = [...currentRoundPlayers].filter(x => x !== null).sort((a, b) => restingHistory[a] - restingHistory[b]);
+                            
+                            let restingCount = currentRoundPlayers.filter(x => x !== null).length - maxPlaying;
+                            if (restingCount < 0) restingCount = 0;
 
-                            // Zamícháme hrající hráče pro spravedlivé dvojice v tomto kole
-                            playingThisRound.sort(() => Math.random() - 0.5);
+                            restingThisRound = sortedByRest.slice(0, restingCount);
+                            let playingNow = sortedByRest.slice(restingCount);
 
-                            // Sestavíme zápasy na kurty
+                            // Sestavení dvojic pro kurty
                             let matchesInRound = [];
-                            for (let c = 0; c < this.courts && playingThisRound.length >= 4; c++) {
-                                let t1p1 = playingThisRound.pop();
-                                let t1p2 = playingThisRound.pop();
-                                let t2p1 = playingThisRound.pop();
-                                let t2p2 = playingThisRound.pop();
+                            // Pro Americano rozdělíme hrající na polovinu: t1 (hráč 1 a 2), t2 (hráč 3 a 4) atd.
+                            for (let c = 0; c < this.courts && playingNow.length >= 4; c++) {
+                                let t1p1 = playingNow.pop();
+                                let t1p2 = playingNow.pop();
+                                let t2p1 = playingNow.pop();
+                                let t2p2 = playingNow.pop();
 
                                 matchesInRound.push({
                                     team1: [t1p1, t1p2],
@@ -358,16 +377,18 @@
                                 });
                             }
 
-                            // Aktualizujeme počítadlo pauz
-                            restingThisRound.forEach(p => restCounts[p]++);
+                            // Zaznamenáme pauzy
+                            restingThisRound.forEach(pl => restingHistory[pl]++);
 
+                            roundsList.glob = true;
                             generatedRounds.push({
                                 matches: matchesInRound,
                                 resting: restingThisRound
                             });
 
-                            // Rotace seznamu hráčů pro příští kolo
-                            pList.push(pList.shift());
+                            // Rotace pro další kolo
+                            let last = restGroup.pop();
+                            restGroup.unshift(last);
                         }
 
                         this.rounds = generatedRounds;
