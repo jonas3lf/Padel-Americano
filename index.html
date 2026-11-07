@@ -120,8 +120,20 @@
             <div class="flex justify-between items-center bg-slate-800 p-3 rounded-2xl border border-slate-700 gap-2">
                 <button @click="currentRound > 0 ? currentRound-- : null" class="flex-1 bg-slate-700 hover:bg-slate-600 py-2 px-3 rounded-xl text-sm font-bold text-center transition" :disabled="currentRound === 0">◀ Předchozí</button>
                 <span class="font-bold text-emerald-400 px-2 whitespace-nowrap text-sm">Kolo <span x-text="currentRound + 1"></span> / <span x-text="rounds.length"></span></span>
-                <button @click="nextRound()" class="flex-1 bg-slate-700 hover:bg-slate-600 py-2 px-3 rounded-xl text-sm font-bold text-center transition">Další ▶</button>
+                <button @click="nextRound()" class="flex-1 bg-slate-700 hover:bg-slate-600 py-2 px-3 rounded-xl text-sm font-bold text-center transition" x-text="currentRound === 2 && players.length === 4 && rounds.length === 6 ? 'Rozhodnout ▶' : 'Další ▶'"></button>
             </div>
+
+            <!-- Speciální výzva po 3. kole pro 4 hráče -->
+            <template x-if="currentRound === 2 && players.length === 4 && rounds.length === 6">
+                <div class="bg-emerald-500/10 border border-emerald-500/30 p-4 rounded-2xl text-center space-y-2">
+                    <div class="font-bold text-emerald-300 text-sm">Máte odehrána první 3 kola (každý s každým 1x).</div>
+                    <p class="text-xs text-slate-300">Chcete turnaj ukončit a podívat se na tabulku, nebo chcete pokračovat dalšími 3 koly (odvety)?</p>
+                    <div class="flex gap-2 justify-center pt-2">
+                        <button @click="tab = 'table'" class="bg-slate-700 hover:bg-slate-600 text-xs font-bold px-4 py-2 rounded-xl text-white transition">Ukončit turnaj</button>
+                        <button @click="currentRound = 3" class="bg-emerald-600 hover:bg-emerald-500 text-xs font-bold px-4 py-2 rounded-xl text-white transition">Pokračovat (Odvety)</button>
+                    </div>
+                </div>
+            </template>
 
             <template x-if="rounds.length > 0">
                 <div class="bg-amber-500/10 border border-amber-500/20 text-amber-300 p-3.5 rounded-2xl text-xs flex flex-col gap-1.5 shadow-md">
@@ -309,89 +321,126 @@
                     if (this.format === 'americano') {
                         let n = this.players.length;
                         let generatedRounds = [];
-                        
-                        // Pro americko standardně generujeme N kol (nebo N-1, pokud je sudý počet, ale pro plnou rotaci partnerů u lichých/specifických počtů jedeme plný cyklus)
-                        // Pro 10 hráčů uděláme přesně 9 kol, kde každý hraje 7 zápasů a 2x odpočívá
-                        let totalRounds = n % 2 === 0 ? n : n; 
-                        
-                        // Generování pomocí algoritmu pro americano (kombinatorika párů)
-                        // Vytvoříme si kopii pole hráčů
-                        let p = [...this.players];
-                        
-                        // Sledovač kol odpočinku, aby každý odpočíval přesně 2x za turnaj (při 10 hráčích a 9 kolech)
-                        let restCount = {};
-                        p.forEach(pl => restCount[pl] = 0);
-                        let totalRestNeeded = (n * totalRounds - this.courts * 4 * totalRounds); // kolik celkově pauz je potřeba
 
-                        // Pro 10 hráčů na 2 kurtech (8 hrajících, 2 sedí v každém kole z 9 kol = celkem 18 pauz, tj. každý 1-2x)
-                        let restingHistory = {};
-                        p.forEach(pl => restingHistory[pl] = 0);
+                        if (n === 4 && this.courts === 1) {
+                            let p = [...this.players];
+                            let combinations = [
+                                { t1: [p[0], p[1]], t2: [p[2], p[3]] },
+                                { t1: [p[0], p[2]], t2: [p[1], p[3]] },
+                                { t1: [p[0], p[3]], t2: [p[1], p[2]] }
+                            ];
 
-                        // Pokročilý generátor kol pro americo (zajišťující rotaci partnerů)
-                        let schedule = [];
-                        
-                        // Použijeme standardní polygonovou metodu pro rozlosování každý s každým jako parťákem
-                        let workingPlayers = [...p];
-                        if (workingPlayers.length % 2 !== 0) {
-                            workingPlayers.push(null); // Dummy pro lichý počet
-                        }
-                        let numSlots = workingPlayers.length;
+                            for (let roundLoop = 0; roundLoop < 2; roundLoop++) {
+                                combinations.forEach(comb => {
+                                    let teamA = roundLoop === 1 ? comb.t2 : comb.t1;
+                                    let teamB = roundLoop === 1 ? comb.t1 : comb.t2;
 
-                        // Pro 10 hráčů si vygenerujeme plnohodnotný rozpis kol
-                        let roundsList = [];
-                        let fixed = workingPlayers[0];
-                        let restGroup = workingPlayers.slice(1);
-
-                        for (let r = 0; r < totalRounds; r++) {
-                            let currentRoundPlayers = [fixed, ...restGroup];
-                            let activeForMatches = [];
-                            let restingThisRound = [];
-
-                            // V každém kole potřebujeme určit, kdo hraje a kdo sedí (pokud je hráčů víc než míst na kurtech)
-                            let maxPlaying = this.courts * 4;
-                            
-                            // Vybereme ty, kteří v dosavadních kolech seděli nejméně
-                            let sortedByRest = [...currentRoundPlayers].filter(x => x !== null).sort((a, b) => restingHistory[a] - restingHistory[b]);
-                            
-                            let restingCount = currentRoundPlayers.filter(x => x !== null).length - maxPlaying;
-                            if (restingCount < 0) restingCount = 0;
-
-                            restingThisRound = sortedByRest.slice(0, restingCount);
-                            let playingNow = sortedByRest.slice(restingCount);
-
-                            // Sestavení dvojic pro kurty
-                            let matchesInRound = [];
-                            // Pro Americano rozdělíme hrající na polovinu: t1 (hráč 1 a 2), t2 (hráč 3 a 4) atd.
-                            for (let c = 0; c < this.courts && playingNow.length >= 4; c++) {
-                                let t1p1 = playingNow.pop();
-                                let t1p2 = playingNow.pop();
-                                let t2p1 = playingNow.pop();
-                                let t2p2 = playingNow.pop();
-
-                                matchesInRound.push({
-                                    team1: [t1p1, t1p2],
-                                    team2: [t2p1, t2p2],
-                                    score1: '',
-                                    score2: '',
-                                    played: false
+                                    generatedRounds.push({
+                                        matches: [{
+                                            team1: teamA,
+                                            team2: teamB,
+                                            score1: '',
+                                            score2: '',
+                                            played: false
+                                        }],
+                                        resting: []
+                                    });
                                 });
                             }
+                            this.rounds = generatedRounds;
+                        } 
+                        else if (n === 10 && this.courts === 2) {
+                            let p = [...this.players];
+                            let restingHistory = {};
+                            p.forEach(pl => restingHistory[pl] = 0);
 
-                            // Zaznamenáme pauzy
-                            restingThisRound.forEach(pl => restingHistory[pl]++);
+                            let workingPlayers = [...p];
+                            let totalRounds = 9;
 
-                            roundsList.glob = true;
-                            generatedRounds.push({
-                                matches: matchesInRound,
-                                resting: restingThisRound
-                            });
+                            for (let r = 0; r < totalRounds; r++) {
+                                let sortedByRest = [...workingPlayers].sort((a, b) => restingHistory[a] - restingHistory[b]);
+                                let restingThisRound = sortedByRest.slice(0, 2);
+                                let playingNow = sortedByRest.slice(2);
 
-                            // Rotace pro další kolo
-                            let last = restGroup.pop();
-                            restGroup.unshift(last);
+                                playingNow.sort(() => Math.random() - 0.5);
+
+                                let matchesInRound = [];
+                                for (let c = 0; c < this.courts && playingNow.length >= 4; c++) {
+                                    let t1p1 = playingNow.pop();
+                                    let t1p2 = playingNow.pop();
+                                    let t2p1 = playingNow.pop();
+                                    let t2p2 = playingNow.pop();
+
+                                    matchesInRound.push({
+                                        team1: [t1p1, t1p2],
+                                        team2: [t2p1, t2p2],
+                                        score1: '',
+                                        score2: '',
+                                        played: false
+                                    });
+                                }
+
+                                restingThisRound.forEach(pl => restingHistory[pl]++);
+
+                                generatedRounds.push({
+                                    matches: matchesInRound,
+                                    resting: restingThisRound
+                                });
+
+                                workingPlayers.push(workingPlayers.shift());
+                            }
+                            this.rounds = generatedRounds;
+                        } 
+                        else {
+                            let totalRounds = n % 2 === 0 ? n - 1 : n;
+                            let p = [...this.players];
+                            let restingHistory = {};
+                            p.forEach(pl => restingHistory[pl] = 0);
+                            let workingPlayers = [...p];
+                            if (workingPlayers.length % 2 !== 0) workingPlayers.push(null);
+
+                            let fixed = workingPlayers[0];
+                            let restGroup = workingPlayers.slice(1);
+
+                            for (let r = 0; r < totalRounds; r++) {
+                                let currentRoundPlayers = [fixed, ...restGroup].filter(x => x !== null);
+                                let maxPlaying = this.courts * 4;
+                                
+                                let sortedByRest = [...currentRoundPlayers].sort((a, b) => restingHistory[a] - restingHistory[b]);
+                                let restingCount = currentRoundPlayers.length - maxPlaying;
+                                if (restingCount < 0) restingCount = 0;
+
+                                let restingThisRound = sortedByRest.slice(0, restingCount);
+                                let playingNow = sortedByRest.slice(restingCount);
+
+                                let matchesInRound = [];
+                                for (let c = 0; c < this.courts && playingNow.length >= 4; c++) {
+                                    let t1p1 = playingNow.pop();
+                                    let t1p2 = playingNow.pop();
+                                    let t2p1 = playingNow.pop();
+                                    let t2p2 = playingNow.pop();
+
+                                    matchesInRound.push({
+                                        team1: [t1p1, t1p2],
+                                        team2: [t2p1, t2p2],
+                                        score1: '',
+                                        score2: '',
+                                        played: false
+                                    });
+                                }
+
+                                restingThisRound.forEach(pl => restingHistory[pl]++);
+
+                                generatedRounds.push({
+                                    matches: matchesInRound,
+                                    resting: restingThisRound
+                                });
+
+                                let last = restGroup.pop();
+                                restGroup.unshift(last);
+                            }
+                            this.rounds = generatedRounds;
                         }
-
-                        this.rounds = generatedRounds;
                     } else {
                         let generatedRounds = [];
                         let numRoundsMex = this.players.length % 2 === 0 ? this.players.length - 1 : this.players.length;
